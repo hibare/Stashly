@@ -34,7 +34,7 @@ type NotifierStoreIface interface {
 	NotifyBackupSuccess(ctx context.Context, databases int, key string) error
 	NotifyBackupFailure(ctx context.Context, err error) error
 	NotifyBackupDeleteFailure(ctx context.Context, err error) error
-	InitStore()
+	InitStore() error
 }
 
 // Notifier manages multiple notifier implementations.
@@ -113,8 +113,15 @@ func (n *Notifier) NotifyBackupDeleteFailure(ctx context.Context, nErr error) er
 }
 
 // InitStore initializes and registers all available notifiers.
-func (n *Notifier) InitStore() {
-	n.register(&discord.Discord{Cfg: n.cfg})
+func (n *Notifier) InitStore() error {
+	d, err := discord.NewDiscordNotifier(n.cfg)
+	if err != nil {
+		return err
+	}
+
+	n.register(d)
+
+	return nil
 }
 
 // NewNotifier creates a new Notifier instance with the provided configuration.

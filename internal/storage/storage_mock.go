@@ -3,6 +3,8 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -12,7 +14,7 @@ type MockStorageIface struct {
 }
 
 // Init provides a mock function with given fields:
-func (_m *MockStorageIface) Init() error {
+func (_m *MockStorageIface) Init(_ context.Context) error {
 	_mockArgs := _m.Called()
 	return _mockArgs.Error(0)
 }
@@ -24,13 +26,13 @@ func (_m *MockStorageIface) Name() string {
 }
 
 // Upload provides a mock function with given fields: localPath
-func (_m *MockStorageIface) Upload(localPath string) (string, error) {
+func (_m *MockStorageIface) Upload(_ context.Context, localPath string) (string, error) {
 	_mockArgs := _m.Called(localPath)
 	return _mockArgs.String(0), _mockArgs.Error(1)
 }
 
 // List provides a mock function with given fields:
-func (_m *MockStorageIface) List() ([]string, error) {
+func (_m *MockStorageIface) List(_ context.Context) ([]string, error) {
 	_mockArgs := _m.Called()
 	if _mockArgs.Get(0) == nil {
 		return nil, _mockArgs.Error(1)
@@ -39,7 +41,7 @@ func (_m *MockStorageIface) List() ([]string, error) {
 }
 
 // Delete provides a mock function with given fields: key
-func (_m *MockStorageIface) Delete(key string) error {
+func (_m *MockStorageIface) Delete(_ context.Context, key string) error {
 	_mockArgs := _m.Called(key)
 	return _mockArgs.Error(0)
 }

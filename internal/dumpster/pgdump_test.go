@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hibare/GoCommon/v2/pkg/os/exec"
 	"github.com/hibare/stashly/internal/config"
-	"github.com/hibare/stashly/internal/exec"
 	"github.com/hibare/stashly/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
