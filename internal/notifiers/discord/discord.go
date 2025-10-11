@@ -19,7 +19,8 @@ const (
 
 // Discord sends notifications to a Discord channel via webhook.
 type Discord struct {
-	Cfg *config.Config
+	Cfg    *config.Config
+	client discord.ClientIface
 }
 
 // Enabled checks if the Discord notifier is enabled in the configuration.
@@ -28,7 +29,7 @@ func (d *Discord) Enabled() bool {
 }
 
 // NotifyBackupSuccess sends a success notification to the Discord channel.
-func (d *Discord) NotifyBackupSuccess(_ context.Context, databases int, key string) error {
+func (d *Discord) NotifyBackupSuccess(ctx context.Context, databases int, key string) error {
 	message := discord.Message{
 		Embeds: []discord.Embed{
 			{
@@ -52,11 +53,11 @@ func (d *Discord) NotifyBackupSuccess(_ context.Context, databases int, key stri
 		Content:    fmt.Sprintf("**PG-DB Backup Successful** - *%s*", d.Cfg.App.InstanceID),
 	}
 
-	return message.Send(d.Cfg.Notifiers.Discord.Webhook)
+	return d.client.Send(ctx, &message)
 }
 
 // NotifyBackupFailure sends a failure notification to the Discord channel.
-func (d *Discord) NotifyBackupFailure(_ context.Context, err error) error {
+func (d *Discord) NotifyBackupFailure(ctx context.Context, err error) error {
 	message := discord.Message{
 		Embeds: []discord.Embed{
 			{
@@ -70,11 +71,11 @@ func (d *Discord) NotifyBackupFailure(_ context.Context, err error) error {
 		Content:    fmt.Sprintf("**PG-DB Backup Failed** - *%s*", d.Cfg.App.InstanceID),
 	}
 
-	return message.Send(d.Cfg.Notifiers.Discord.Webhook)
+	return d.client.Send(ctx, &message)
 }
 
 // NotifyBackupDeleteFailure sends a deletion failure notification to the Discord channel.
-func (d *Discord) NotifyBackupDeleteFailure(_ context.Context, err error) error {
+func (d *Discord) NotifyBackupDeleteFailure(ctx context.Context, err error) error {
 	message := discord.Message{
 		Embeds: []discord.Embed{
 			{
@@ -88,5 +89,20 @@ func (d *Discord) NotifyBackupDeleteFailure(_ context.Context, err error) error 
 		Content:    fmt.Sprintf("**PG-DB Backup Deletion Failed** - *%s*", d.Cfg.App.InstanceID),
 	}
 
-	return message.Send(d.Cfg.Notifiers.Discord.Webhook)
+	return d.client.Send(ctx, &message)
+}
+
+// NewDiscordNotifier creates a new Discord notifier instance.
+func NewDiscordNotifier(cfg *config.Config) (*Discord, error) {
+	client, err := discord.NewClient(discord.Options{
+		WebhookURL: cfg.Notifiers.Discord.Webhook,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Discord{
+		Cfg:    cfg,
+		client: client,
+	}, nil
 }

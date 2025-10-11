@@ -5,23 +5,26 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/hibare/GoCommon/v2/pkg/os/exec"
 	"github.com/hibare/stashly/internal/config"
 	"github.com/hibare/stashly/internal/dumpster"
-	"github.com/hibare/stashly/internal/exec"
 	"github.com/hibare/stashly/internal/notifiers"
 	"github.com/hibare/stashly/internal/storage/s3"
 )
 
 func doBackup(ctx context.Context, cfg *config.Config) error {
 	store := s3.NewS3Storage(cfg)
-	if err := store.Init(); err != nil {
+	if err := store.Init(ctx); err != nil {
 		return err
 	}
 
 	exec := exec.NewExec()
 	dump := dumpster.NewDumpster(cfg, store, exec)
 	notify := notifiers.NewNotifier(cfg)
-	notify.InitStore()
+	err := notify.InitStore()
+	if err != nil {
+		return err
+	}
 
 	// Add new backup
 	dumpResp, err := dump.CreateDump(ctx)

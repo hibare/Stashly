@@ -13,9 +13,9 @@ import (
 	"github.com/hibare/GoCommon/v2/pkg/crypto/gpg"
 	"github.com/hibare/GoCommon/v2/pkg/datetime"
 	"github.com/hibare/GoCommon/v2/pkg/file"
+	"github.com/hibare/GoCommon/v2/pkg/os/exec"
 	"github.com/hibare/stashly/internal/config"
 	"github.com/hibare/stashly/internal/constants"
-	"github.com/hibare/stashly/internal/exec"
 	"github.com/hibare/stashly/internal/storage"
 )
 
@@ -33,6 +33,7 @@ type Dumpster struct {
 	cfg            *config.Config
 	exec           exec.ExecIface
 	backupLocation string
+	gpg            gpg.GPGIface
 }
 
 func (d *Dumpster) getEnvVars() []string {
@@ -156,30 +157,35 @@ func (d *Dumpster) CreateDump(ctx context.Context) (*DumpResponse, error) {
 		return nil, errors.New("no databases were exported")
 	}
 
-	archivePath, _, _, _, err := file.ArchiveDir(resp.exportLocation, nil)
+	archiveResp, err := file.ArchiveDir(resp.exportLocation, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	archivePath := archiveResp.ArchivePath
+
 	uploadFilePath := archivePath
 
 	if d.cfg.Backup.Encrypt {
-		gpgKey, gErr := gpg.DownloadGPGPubKey(d.cfg.Encryption.GPG.KeyID, d.cfg.Encryption.GPG.KeyServer)
+		slog.DebugContext(ctx, "fetching gpg key", "key_id", d.cfg.Encryption.GPG.KeyID, "key_server", d.cfg.Encryption.GPG.KeyServer)
+		_, gErr := d.gpg.FetchGPGPubKeyFromKeyServer(d.cfg.Encryption.GPG.KeyID, d.cfg.Encryption.GPG.KeyServer)
 		if gErr != nil {
 			slog.WarnContext(ctx, "Error downloading gpg key", "error", gErr)
 			return nil, gErr
 		}
 
-		encryptedFilePath, gErr := gpgKey.EncryptFile(archivePath)
+		slog.DebugContext(ctx, "Encrypting archive file", "file", archivePath)
+		encryptedFilePath, gErr := d.gpg.EncryptFile(archivePath)
 		if gErr != nil {
 			slog.WarnContext(ctx, "Error encrypting archive file", "error", gErr)
 			return nil, gErr
 		}
+		slog.DebugContext(ctx, "Encrypted file", "file", encryptedFilePath)
 		uploadFilePath = encryptedFilePath
 	}
 
 	slog.InfoContext(ctx, "Uploading backup", "file", uploadFilePath, "storage", d.store.Name())
-	key, err := d.store.Upload(uploadFilePath)
+	key, err := d.store.Upload(ctx, uploadFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +198,7 @@ func (d *Dumpster) CreateDump(ctx context.Context) (*DumpResponse, error) {
 
 // ListDumps lists available dumps in the storage backend, sorted by date.
 func (d *Dumpster) ListDumps(ctx context.Context) ([]string, error) {
-	keys, err := d.store.List()
+	keys, err := d.store.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +210,7 @@ func (d *Dumpster) ListDumps(ctx context.Context) ([]string, error) {
 
 	keys = d.store.TrimPrefix(keys)
 	keys = datetime.SortDateTimes(keys)
+	slog.DebugContext(ctx, "Found backups", "keys", keys)
 	return keys, nil
 }
 
@@ -224,7 +231,7 @@ func (d *Dumpster) PurgeDumps(ctx context.Context) error {
 
 	for _, key := range keysToDelete {
 		slog.InfoContext(ctx, "Deleting backup", "key", key)
-		if sErr := d.store.Delete(key); sErr != nil {
+		if sErr := d.store.Delete(ctx, key); sErr != nil {
 			slog.ErrorContext(ctx, "Error deleting backup", "key", key, "error", sErr)
 			return fmt.Errorf("error deleting backup %s: %w", key, sErr)
 		}
@@ -253,5 +260,6 @@ func NewDumpster(cfg *config.Config, store storage.StorageIface, exec exec.ExecI
 		cfg:            cfg,
 		exec:           exec,
 		backupLocation: filepath.Join(os.TempDir(), constants.ExportDir),
+		gpg:            gpg.NewGPG(gpg.Options{}),
 	}
 }
