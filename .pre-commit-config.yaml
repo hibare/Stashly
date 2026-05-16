@@ -1,6 +1,8 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-json
@@ -10,14 +12,9 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
       - id: check-shebang-scripts-are-executable
-  - repo: https://github.com/tekwizely/pre-commit-golang
-    rev: bf2137dcd61fa219107613e4a4103cf24540cd93 # v1.0.0-rc.2
-    hooks:
-      - id: go-mod-tidy
-      - id: go-test-mod
-      - id: golangci-lint-mod
+
   - repo: https://github.com/hadolint/hadolint
-    rev: b3555ba9c2bfd9401e79f2f0da68dd1ae38e10c7 # v2.12.0
+    rev: v2.14.0
     hooks:
       - id: hadolint-docker
         name: Lint Dockerfiles
@@ -25,14 +22,12 @@ repos:
         language: docker_image
         types: ["dockerfile"]
         entry: ghcr.io/hadolint/hadolint hadolint
-  # - repo: local
-  #   hooks:
-  #     - id: trufflehog
-  #       name: TruffleHog
-  #       description: Detect secrets in your data.
-  #       # entry: bash -c 'trufflehog --no-update git file://. --since-commit HEAD --only-verified --fail'
-  #       # For running trufflehog in docker, use the following entry instead:
-  #       entry: bash -c 'docker run --rm -v "$(pwd):/workdir" -i --rm trufflesecurity/trufflehog:latest git file:///workdir --since-commit HEAD --only-verified --fail'
-  #       language: system
-  #       stages: ["commit", "push"]
-  #       exclude: (data/|.*/node_modules/|.*venv/|etc/|dist/)
+
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.4
+    hooks:
+      - id: go-mod-tidy
+      - id: go-fmt
+      - id: go-test-mod
+      - id: golangci-lint-mod
+        args: [--fix]
