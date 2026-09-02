@@ -1,6 +1,6 @@
 module github.com/hibare/stashly
 
-go 1.25.1
+go 1.27.1
 
 require (
 	github.com/go-co-op/gocron v1.37.0
